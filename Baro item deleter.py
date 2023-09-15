@@ -99,7 +99,7 @@ with gzip.open(submarine_input, 'rb') as f_in:
     with open(Path(submarine_input.parent / (f'{submarine_input.stem}.xml')), 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
 
-tree = ET.parse('Metallicor MK1.xml')
+tree = ET.parse(Path(submarine_input.parent / (f'{submarine_input.stem}.xml')))
 
 root = tree.getroot()
 

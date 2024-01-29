@@ -33,7 +33,7 @@ if not Path('warningacknowledged').exists():
 start = perf_counter()
 
 # Set up logging
-logging.basicConfig(filename='log.txt', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='BaroItemDeleter1.txt', filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define list of containers and items that the program will recursively search for items in
 containers_and_items = ['steelcabinet',

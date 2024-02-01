@@ -9,25 +9,26 @@ from tqdm import tqdm
 
 
 def iterate_elements(elem):
-    if elem.tag != 'LinkedSubmarine':  # Check if the current element is not "LinkedSubmarine". This will ignore items inside linked submarines (drones/shuttles and such)
-        if elem.tag == 'Item':
-            if elem.attrib['identifier'] in containers_and_items:
-                for container in elem:
-                    if container.tag == 'ItemContainer':
-                        # Log the container and its contained items.
-                        logging.info(f'Found container: {elem.attrib["identifier"]} with item IDs: {container.attrib["contained"] if any(i.isdigit() for i in container.attrib["contained"]) else "None"}')
-                        inspection_ids = container.attrib['contained'].split(',')
-                        for item in inspection_ids:
-                            # If there are multiple items in the container, split them up and add them to the recursive search list
-                            if ';' in item:
-                                cleanedContainers.append(elem.attrib['ID'])
-                                item_ids.extend(item.split(';'))
-                            elif item == '':  # Check if the item is empty
-                                continue
-                            # If there is only one item in the container, add it to the recursive search list
-                            else:
-                                cleanedContainers.append(elem.attrib['ID'])
-                                item_ids.append(item)
+    # Check if the current element is not "LinkedSubmarine". This will ignore items inside linked submarines (drones/shuttles and such)
+    if elem.tag != 'LinkedSubmarine':
+        # Find all 'Item' elements with the specified attribute
+        for item in elem.findall(".//Item[@identifier]"):
+            if item.attrib['identifier'] in containers_and_items:
+                for container in item.findall(".//ItemContainer"):
+                    # Log the container and its contained items.
+                    logging.info(f'Found container: {item.attrib["identifier"]} with item IDs: {container.attrib["contained"] if any(i.isdigit() for i in container.attrib["contained"]) else "None"}')
+                    inspection_ids = container.attrib['contained'].split(',')
+                    for item_id in inspection_ids:
+                        # If there are multiple items in the container, split them up and add them to the recursive search list
+                        if ';' in item_id:
+                            cleanedContainers.append(item.attrib['ID'])
+                            item_ids.extend(item_id.split(';'))
+                        elif item_id == '':  # Check if the item is empty
+                            continue
+                        # If there is only one item in the container, add it to the recursive search list
+                        else:
+                            cleanedContainers.append(item.attrib['ID'])
+                            item_ids.append(item_id)
 
         # Iterate through the children elements
         for child in elem:
@@ -39,46 +40,46 @@ def iterate_elements(elem):
 def recursive_search(item_id, items):
     recursive_ids = []
     for child in root.findall('Item'):
-        if 'ID' in child.attrib:
-            if child.attrib['ID'] == item_id:
-                # Let the user know what item is being scanned
-                items.set_description(f'Scanning {child.attrib["identifier"].ljust(description_padding)}')
-                for container in child:
-                    if container.tag == 'ItemContainer':
-                        matching_items = tree.findall(f".//*[@ID='{item_id}']")
-                        item_container = matching_items[0].get('identifier')
-                        # Log the container and its contained items. If it has no contained items, log that instead
-                        logging.info(f'Found item IDs: {container.attrib["contained"] if any(i.isdigit() for i in container.attrib["contained"]) else "None"} '
-                                     f'from {item_container} with ID: {item_id}')
-                        inspection_ids = container.attrib['contained'].split(',')
-                        for item in inspection_ids:
-                            # If there are multiple items in the container, split them up and add them to the recursive search list
-                            if ';' in item:
-                                cleanedContainers.append(item_id)
-                                item_ids.extend(item.split(';'))
-                                recursive_ids.extend(item.split(';'))
-                            # If there are no items in the container, skip it
-                            if item == '':
-                                continue
-                            # If there is only one item in the container, add it to the recursive search list
-                            else:
-                                cleanedContainers.append(item_id)
-                                item_ids.append(item)
-                                recursive_ids.append(item)
+        if 'ID' in child.attrib and child.attrib['ID'] == item_id:
+            # Let the user know what item is being scanned
+            items.set_description(f'Scanning {child.attrib["identifier"].ljust(description_padding)}')
+            for container in child:
+                if container.tag == 'ItemContainer':
+                    matching_items = root.findall(f".//*[@ID='{item_id}']")  # Search only the children of root
+                    item_container = matching_items[0].get('identifier')
+                    # Log the container and its contained items. If it has no contained items, log that instead
+                    logging.info(f'Found item IDs: {container.attrib["contained"] if any(i.isdigit() for i in container.attrib["contained"]) else "None"} '
+                                 f'from {item_container} with ID: {item_id}')
+                    inspection_ids = container.attrib['contained'].split(',')
+                    for item in inspection_ids:
+                        # If there are multiple items in the container, split them up and add them to the recursive search list
+                        if ';' in item:
+                            cleanedContainers.append(item_id)
+                            item_ids.extend(item.split(';'))
+                            recursive_ids.extend(item.split(';'))
+                        # If there are no items in the container, skip it
+                        elif item == '':
+                            continue
+                        # If there is only one item in the container, add it to the recursive search list
+                        else:
+                            cleanedContainers.append(item_id)
+                            item_ids.append(item)
+                            recursive_ids.append(item)
 
-                        # If there are items in the container, recursively search them for more items
-                        for item in recursive_ids:
-                            recursive_search(item, items)
+                    # If there are items in the container, recursively search them for more items
+                    for item in recursive_ids:
+                        recursive_search(item, items)
 
 
 def deleteItems():
     i = 0
     for item_id in item_ids:
-        item = tree.findall(f".//*[@ID='{item_id}']")
+        item = root.findall(f".//*[@ID='{item_id}']")  # Search only the children of root
         if item:
+            identifier = item[0].get("identifier")  # Store the identifier in a variable
             root.remove(item[0])
-            logging.info(f'Removed {item[0].get("identifier")} with ID: {item_id}')
-            print(f'Removed {item[0].get("identifier")} with ID: {item_id}')
+            logging.info(f'Removed {identifier} with ID: {item_id}')
+            print(f'Removed {identifier} with ID: {item_id}')
             i += 1
     return i
 
